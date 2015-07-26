@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="static/js/jquery.js"></script>
+    <script src="static/js/highcharts.src.js"></script>
+    <script src="static/js/highcharts-more.src.js"></script>
+</head>
+<body>
+<div id="container"></div>
+<script>
+    $(function () {
+        $(document).ready(function () {
+            var last_update = 0
+
+            Highcharts.setOptions({
+                global: {
+                    useUTC: false
+                }
+            });
+
+            $('#container').highcharts({
+                chart: {
+                    type: 'spline',
+                    animation: Highcharts.svg, // don't animate in old IE
+                    marginRight: 10,
+                    events: {
+                        load: function () {
+
+                            // set up the updating of the chart each second
+                            var series = this.series[0];
+                            setInterval(function () {
+                                var datas = fetch(last_update);
+                                for (var i = 0; i < datas.length; i++) {
+                                    series.addPoint([datas[i]['x'], datas[i]['y']], true, true);
+                                    last_update = datas[i]['x']
+                                }
+                            }, 1000);
+                        }
+                    }
+                },
+                title: {
+                    text: 'Live random data'
+                },
+                xAxis: {
+                    type: 'datetime',
+                    tickPixelInterval: 150
+                },
+                yAxis: {
+                    title: {
+                        text: 'Value'
+                    },
+                    plotLines: [{
+                        value: 0,
+                        width: 1,
+                        color: '#808080'
+                    }]
+                },
+                tooltip: {
+                    formatter: function () {
+                        return '<b>' + this.series.name + '</b><br/>' +
+                                Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) + '<br/>' +
+                                Highcharts.numberFormat(this.y, 2);
+                    }
+                },
+                legend: {
+                    enabled: false
+                },
+                exporting: {
+                    enabled: false
+                },
+                series: [{
+                    name: 'Random data',
+                    data: (function () {
+
+                        // generate an array of random data
+                        var data = []
+                        var init = fetch(last_update)
+
+                        for (var i = 0; i < init.length; i++) {
+                            data.push(init[i]);
+                            last_update = init[i]['x']
+                        }
+                        return data;
+                    })()
+                }]
+            });
+        });
+    });
+
+    function fetch(timestamp) {
+        var result = [];
+        $.ajax({
+            type: 'post',
+            url: '/' + timestamp,
+            dataType: 'json',
+            async: false,
+            success: function (datas) {
+                for (var i = 0; i < datas.length; i++) {
+                    result.push({x: datas[i]['ts'], y: datas[i]['value']})
+                }
+            }
+        });
+        return result
+    }
+</script>
+</body>
+</html>
